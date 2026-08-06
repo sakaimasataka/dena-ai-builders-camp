@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>つながり帳</title>
+<style>
+  :root{
+    --navy:#23407c; --navy-d:#1a3161; --ink:#26303f;
+    --mint:#2fbfa0; --mint-bg:#e4f7f2;
+    --coral:#ff6b5c; --coral-bg:#ffece9;
+    --bg:#f4f6fa; --card:#ffffff; --line:#e4e9f2; --sub:#7c8698;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",Meiryo,sans-serif;
+       background:#dfe4ec;color:var(--ink);font-size:14px;line-height:1.55}
+  #app{max-width:430px;margin:0 auto;background:var(--bg);min-height:100dvh;
+       display:flex;flex-direction:column;position:relative;overflow:hidden}
+  main{flex:1;overflow-y:auto;padding-bottom:76px}
+  .screen{display:none;padding:16px 16px 24px}
+  .screen.active{display:block}
+
+  .appbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px}
+  .appbar h1{font-size:22px;color:var(--navy);letter-spacing:.02em}
+  .appbar .tagline{color:var(--sub);font-size:12px;margin-top:2px}
+  .bell{width:38px;height:38px;border-radius:50%;background:var(--card);border:1px solid var(--line);
+        display:flex;align-items:center;justify-content:center;font-size:17px;position:relative;cursor:pointer}
+  .bell .dot{position:absolute;top:7px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--coral);display:none}
+  .bell .dot.on{display:block}
+
+  .search{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);
+          border-radius:999px;padding:10px 14px;margin:12px 0 10px;color:var(--sub)}
+  .search input{border:none;outline:none;flex:1;font-size:14px;background:transparent;color:var(--ink)}
+
+  .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:999px;
+        padding:6px 13px;font-size:12.5px;color:var(--ink);cursor:pointer;user-select:none}
+  .chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+  .chip.horizon.on{background:var(--coral);border-color:var(--coral)}
+
+  .sec{margin-top:18px}
+  .sec h2{font-size:15.5px;color:var(--navy);display:flex;align-items:center;justify-content:space-between}
+  .sec h2 .more{font-size:12px;color:var(--sub);font-weight:normal;cursor:pointer}
+
+  .bigcard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-top:10px;
+           box-shadow:0 2px 10px rgba(35,64,124,.06)}
+  .bigcard .top{display:flex;gap:14px;align-items:center}
+  .avatar{border-radius:50%;background:var(--mint-bg);display:flex;align-items:center;justify-content:center;
+          font-weight:bold;color:var(--navy);flex:0 0 auto}
+  .avatar.lg{width:72px;height:72px;font-size:26px;border:3px solid var(--mint)}
+  .avatar.sm{width:44px;height:44px;font-size:18px}
+  .bigcard .name{font-size:19px;font-weight:bold}
+  .bigcard .meta{color:var(--sub);font-size:12.5px}
+  .context{color:var(--coral);font-size:12.5px;margin-top:2px;font-weight:bold}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .tag{font-size:11.5px;border-radius:999px;padding:4px 10px;background:var(--mint-bg);color:#177e68}
+  .tag.coral{background:var(--coral-bg);color:#c8483b}
+  .tag.navy{background:#e8edf7;color:var(--navy)}
+  .btn{display:block;width:100%;text-align:center;border:none;border-radius:999px;padding:12px;
+       font-size:14.5px;font-weight:bold;cursor:pointer;margin-top:12px}
+  .btn.primary{background:var(--navy);color:#fff}
+  .btn.coral{background:var(--coral);color:#fff}
+  .btn.ghost{background:transparent;color:var(--sub);border:1px solid var(--line);font-weight:normal}
+  .memo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;
+        padding-top:10px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--sub)}
+  .memo .edit{color:var(--navy);cursor:pointer;flex:0 0 auto}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;cursor:pointer;position:relative}
+  .card .bm{position:absolute;top:10px;right:10px;font-size:13px}
+  .card .nm{font-weight:bold;margin-top:8px}
+  .card .mt{color:var(--sub);font-size:11.5px}
+  .card .tag{display:inline-block;margin-top:8px}
+
+  .meet{background:var(--mint-bg);border:1px solid #bfe9de;border-radius:18px;padding:14px;margin-top:10px}
+  .meet .lead{font-weight:bold;color:#12604f}
+  .meet .flow{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px}
+  .slot{background:#fff;border-radius:10px;padding:6px 10px;border:1px solid #cdeae1}
+  .slot b{display:block;font-size:11px;color:var(--sub);font-weight:normal}
+  .arrow{color:#12604f}
+
+  .fab{position:absolute;right:16px;bottom:96px;width:64px;height:64px;border-radius:50%;
+       background:var(--navy);color:#fff;border:none;font-size:10.5px;font-weight:bold;cursor:pointer;
+       box-shadow:0 6px 16px rgba(26,49,97,.35);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:5}
+  .fab span{font-size:20px}
+
+  nav{position:absolute;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);
+      display:flex;z-index:6}
+  nav button{flex:1;background:none;border:none;padding:9px 0 10px;font-size:10.5px;color:var(--sub);cursor:pointer}
+  nav button .ic{display:block;font-size:19px;margin-bottom:2px}
+  nav button.on{color:var(--navy);font-weight:bold}
+
+  /* timetable */
+  table.tt{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden;
+           margin-top:10px;font-size:11px;table-layout:fixed}
+  .tt th,.tt td{border:1px solid var(--line);text-align:center;padding:6px 2px;height:44px}
+  .tt th{background:#eef2f9;color:var(--navy);font-size:11px;height:auto;padding:6px 0}
+  .tt td.cls{background:#e8edf7;color:var(--navy);font-weight:bold}
+  .tt td.common{background:var(--mint-bg);color:#12604f;font-weight:bold}
+  .event{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:10px;
+         display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .event.gray{color:var(--sub);background:#eef0f4}
+  .event .join{border:none;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:bold;cursor:pointer;
+               background:var(--navy);color:#fff;flex:0 0 auto}
+  .event.joined{background:var(--mint-bg);border-color:#bfe9de;color:#12604f}
+  .event.joined .join{background:var(--mint)}
+
+  .plan{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:10px}
+  .plan .when{color:var(--coral);font-weight:bold;font-size:12.5px}
+  .plan .what{font-weight:bold;font-size:15px;margin-top:2px}
+  .plan .with{color:var(--sub);font-size:12.5px;margin-top:2px}
+  .empty{color:var(--sub);text-align:center;padding:32px 0;font-size:13px}
+
+  .toggle{display:flex;align-items:center;justify-content:space-between;background:var(--card);
+          border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:10px}
+  .switch{width:46px;height:26px;border-radius:999px;background:#cfd6e2;position:relative;cursor:pointer;transition:.2s;flex:0 0 auto}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s}
+  .switch.on{background:var(--mint)}
+  .switch.on::after{left:23px}
+
+  /* overlay sheets */
+  .overlay{position:absolute;inset:0;background:rgba(20,28,45,.45);display:none;z-index:10;align-items:flex-end}
+  .overlay.open{display:flex}
+  .sheet{background:var(--card);width:100%;border-radius:22px 22px 0 0;padding:20px 18px 26px;max-height:86%;overflow-y:auto}
+  .sheet .grab{width:44px;height:5px;border-radius:99px;background:var(--line);margin:0 auto 14px}
+  .sheet h3{color:var(--navy);font-size:17px;margin-bottom:4px}
+  .sheet .sub{color:var(--sub);font-size:12.5px}
+  .sheet textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:14px;
+                  margin-top:12px;min-height:96px;font-family:inherit;resize:vertical;background:var(--bg)}
+  .kv{display:flex;gap:8px;margin-top:8px;font-size:13px}
+  .kv b{color:var(--navy);flex:0 0 84px;font-weight:bold}
+  .urlbox{display:flex;gap:8px;margin-top:12px}
+  .urlbox input{flex:1;border:1px solid var(--line);border-radius:12px;padding:11px;font-size:12.5px;background:var(--bg)}
+  .urlbox button{border:none;border-radius:12px;background:var(--navy);color:#fff;padding:0 16px;font-weight:bold;cursor:pointer}
+  .note{font-size:11.5px;color:var(--sub);margin-top:10px}
+
+  #toast{position:absolute;left:50%;bottom:120px;transform:translateX(-50%) translateY(10px);
+         background:var(--navy-d);color:#fff;padding:11px 18px;border-radius:999px;font-size:13px;
+         opacity:0;pointer-events:none;transition:.25s;z-index:20;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+<main>
+
+  <!-- ================= つながり帳 ================= -->
+  <section class="screen active" id="scr-book">
+    <div class="appbar">
+      <div>
+        <h1>つながり帳 <span style="color:var(--mint)">”</span></h1>
+        <div class="tagline">出会った人を、次のつながりへ</div>
+      </div>
+      <div class="bell" onclick="openNotice()">🔔<span class="dot" id="bellDot"></span></div>
+    </div>
+
+    <div class="search">🔍<input id="q" placeholder="名前・授業・イベントで検索" oninput="renderBook()"></div>
+
+    <div class="chips" id="chips">
+      <div class="chip" data-f="recent" onclick="toggleChip(this)">🕒 最近会った</div>
+      <div class="chip" data-f="class" onclick="toggleChip(this)">📖 同じ授業</div>
+      <div class="chip" data-f="circle" onclick="toggleChip(this)">👥 サークル</div>
+      <div class="chip horizon" data-f="horizon" onclick="toggleChip(this)">🏳 Horizon</div>
+    </div>
+
+    <div class="sec" id="recentSec">
+      <h2>最近つながった人 <span style="color:var(--mint)">”</span></h2>
+      <div id="recentCard"></div>
+    </div>
+
+    <div class="sec">
+      <h2>みんなのプロフィール <span class="more">すべて見る ></span></h2>
+      <div class="grid" id="peopleGrid"></div>
+    </div>
+
+    <div class="sec" id="meetSec">
+      <h2>次に会えそう <span style="color:var(--mint)">”</span></h2>
+      <div class="meet" id="meetCard">
+        <div class="lead">📅 水曜3限、ミサキさんも空きコマ</div>
+        <div class="flow">
+          <div class="slot"><b>2限</b>心理学概論</div><div class="arrow">→</div>
+          <div class="slot"><b>3限</b>空きコマ</div>
+        </div>
+        <div class="note" style="margin-top:8px">💡 根拠：同じ授業のあと、お互いの公開時間割で空きコマが重なっています</div>
+        <button class="btn coral" onclick="openInvite()">一緒にどこか行ってみる？</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ホーム（時間割） ================= -->
+  <section class="screen" id="scr-home">
+    <div class="appbar"><div><h1>ホーム</h1><div class="tagline">今週の時間割とHorizonの予定</div></div></div>
+    <table class="tt">
+      <tr><th></th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th></tr>
+      <tr><th>1</th><td class="cls">英語</td><td></td><td></td><td></td><td></td></tr>
+      <tr><th>2</th><td></td><td></td><td class="common">心理学概論</td><td class="cls">経営学</td><td></td></tr>
+      <tr><th>3</th><td></td><td class="cls">統計学</td><td class="common">空きコマ</td><td></td><td></td></tr>
+      <tr><th>4</th><td></td><td></td><td></td><td></td><td class="cls">情報リテラシー</td></tr>
+      <tr><th>5</th><td></td><td></td><td></td><td></td><td></td></tr>
+    </table>
+    <div class="note">ミント色＝ミサキさんとの共通（授業・空きコマ）</div>
+    <div class="sec"><h2>Horizonの予定</h2>
+      <div class="event" id="ev1"><div><b>合同開発会</b><div class="mt" style="color:inherit;font-size:11.5px">土曜 13:00〜 ｜ 瀬田・深草 合同</div></div>
+        <button class="join" onclick="toggleEvent()">参加する</button></div>
+    </div>
+  </section>
+
+  <!-- ================= 予定 ================= -->
+  <section class="screen" id="scr-plan">
+    <div class="appbar"><div><h1>予定</h1><div class="tagline">一緒にする予定</div></div></div>
+    <div id="planList"></div>
+  </section>
+
+  <!-- ================= プロフィール ================= -->
+  <section class="screen" id="scr-me">
+    <div class="appbar"><div><h1>プロフィール</h1></div></div>
+    <div class="bigcard">
+      <div class="top"><div class="avatar lg">ハ</div>
+        <div><div class="name">ハルト</div><div class="meta">経営学部 1年 ｜ 瀬田キャンパス</div>
+        <div class="context">Horizon 新入部員</div></div></div>
+      <div class="tags"><span class="tag navy">📖 心理学概論ほか5コマ</span><span class="tag">💻 Web制作を勉強中</span><span class="tag coral">🎸 軽音に興味</span></div>
+    </div>
+    <div class="toggle"><div><b>時間割を公開する</b><div class="note" style="margin:2px 0 0">つながった部員に共通授業・空きコマが表示されます</div></div>
+      <div class="switch on" id="pubSw" onclick="togglePub()"></div></div>
+    <div class="toggle"><div><b>ブロック・通報</b><div class="note" style="margin:2px 0 0">困ったときはこちら（本実装で対応）</div></div><div style="color:var(--sub)">></div></div>
+  </section>
+
+</main>
+
+<button class="fab" onclick="openConnect()"><span>🔗</span>つながる</button>
+
+<nav>
+  <button data-s="home" onclick="go('home')"><span class="ic">🏠</span>ホーム</button>
+  <button data-s="book" class="on" onclick="go('book')"><span class="ic">📒</span>つながり帳</button>
+  <button data-s="plan" onclick="go('plan')"><span class="ic">📅</span>予定</button>
+  <button data-s="me" onclick="go('me')"><span class="ic">👤</span>プロフィール</button>
+</nav>
+
+<!-- ==== 詳細シート ==== -->
+<div class="overlay" id="ovDetail" onclick="closeIfBg(event,'ovDetail')">
+  <div class="sheet" id="detailBody"></div>
+</div>
+
+<!-- ==== 誘いシート ==== -->
+<div class="overlay" id="ovInvite" onclick="closeIfBg(event,'ovInvite')">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>ミサキさんを誘う</h3>
+    <div class="sub">根拠：水曜2限 心理学概論（共通）→ 3限 お互い空きコマ</div>
+    <textarea id="inviteMsg">この前のHorizon新歓で話したハルトです！水曜の心理学概論のあと、3限空いてたら一緒に学食行かない？</textarea>
+    <div class="note">文面は編集できます。送信前に必ず自分で確認します（自動送信はしません）。</div>
+    <button class="btn coral" onclick="sendInvite()">この内容で誘いを送る</button>
+    <button class="btn ghost" onclick="closeSheet('ovInvite')">あとで考える</button>
+  </div>
+</div>
+
+<!-- ==== つながる（URL交換）シート ==== -->
+<div class="overlay" id="ovConnect" onclick="closeIfBg(event,'ovConnect')">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>つながる</h3>
+    <div class="sub">この交換用URLを相手に送ると、お互いの「出会いカード」が自動で作られます。</div>
+    <div class="urlbox"><input id="myUrl" readonly value="https://tsunagari-cho.app/c/haruto-0806"><button onclick="copyUrl()">コピー</button></div>
+    <div class="note">いま何で出会ったか（例：Horizon新歓）は、開いた場所と日時から自動でタグ付けされます。QRコード表示は今後追加予定。</div>
+    <button class="btn primary" onclick="demoConnect()">（デモ）相手がURLを開いた体験を見る</button>
+    <button class="btn ghost" onclick="closeSheet('ovConnect')">閉じる</button>
+  </div>
+</div>
+
+<!-- ==== メモ編集シート ==== -->
+<div class="overlay" id="ovMemo" onclick="closeIfBg(event,'ovMemo')">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>話したことメモ</h3>
+    <div class="sub">自分だけに表示されます。相手には見えません。</div>
+    <textarea id="memoInput"></textarea>
+    <button class="btn primary" onclick="saveMemo()">保存する</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+</div>
+
+<script>
+// ---------- デモ用固定データ ----------
+const state = JSON.parse(localStorage.getItem('tsunagari') || 'null') || {
+  memo: '軽音と大学生活', plans: [], joined: false, pub: true, kenta: false, notice: false
+};
+function save(){ localStorage.setItem('tsunagari', JSON.stringify(state)); }
+
+const people = [
+  {id:'misaki', name:'ミサキ', dept:'文学部 1年', ctx:'Horizon新歓で出会いました', recent:true,
+   tags:[['📖 心理学概論','tag'],['🎸 軽音に興味','tag coral']], f:['recent','class','horizon'],
+   campus:'瀬田', pub:true,
+   common:'共通の授業：心理学概論（水2）／ 共通の空きコマ：水3', kw:'ミサキ 文学部 心理学概論 軽音 Horizon 新歓'},
+  {id:'taichi', name:'タイチ', dept:'経済学部 1年', ctx:'統計学の授業で出会いました',
+   tags:[['📖 統計学で一緒','tag']], f:['class'], campus:'瀬田', pub:false,
+   common:'共通の授業：統計学（火3）', kw:'タイチ 経済学部 統計学'},
+  {id:'ayaka', name:'アヤカ', dept:'法学部 1年', ctx:'Horizon新歓で出会いました',
+   tags:[['🏓 卓球サークル','tag coral']], f:['circle','horizon'], campus:'深草', pub:false,
+   common:'共通の所属：Horizon', kw:'アヤカ 法学部 卓球 サークル Horizon'},
+  {id:'souta', name:'ソウタ', dept:'理学部 1年', ctx:'新入生交流会で出会いました',
+   tags:[['🎪 新入生交流会','tag navy']], f:['recent'], campus:'瀬田', pub:false,
+   common:'共通のイベント：新入生交流会', kw:'ソウタ 理学部 新入生交流会 イベント'},
+  {id:'riko', name:'リコ', dept:'文学部 1年', ctx:'英語の授業で出会いました',
+   tags:[['📖 英語の授業','tag']], f:['class'], campus:'深草', pub:false,
+   common:'共通の授業：英語コミュニケーション（月1）', kw:'リコ 文学部 英語 授業'},
+];
+const kenta = {id:'kenta', name:'ケンタ', dept:'情報学部 2年', ctx:'Horizon新歓で出会いました', recent:false,
+   tags:[['💻 プログラミング','tag'],['🏳 Horizon','tag coral']], f:['recent','horizon'], campus:'深草', pub:false,
+   common:'共通の所属：Horizon ／ 共通の興味：Web制作', kw:'ケンタ 情報学部 プログラミング Horizon 新歓'};
+
+// ---------- 画面遷移 ----------
+function go(s){
+  document.querySelectorAll('.screen').forEach(e=>e.classList.remove('active'));
+  document.getElementById('scr-'+s).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.s===s));
+  if(s==='plan') renderPlans();
+}
+function closeSheet(id){ document.getElementById(id).classList.remove('open'); }
+function closeIfBg(ev,id){ if(ev.target.id===id) close(id); }
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+// ---------- つながり帳描画 ----------
+const activeFilters = new Set();
+function toggleChip(el){
+  el.classList.toggle('on');
+  el.classList.contains('on') ? activeFilters.add(el.dataset.f) : activeFilters.delete(el.dataset.f);
+  renderBook();
+}
+function list(){ return state.kenta ? [kenta, ...people] : [...people]; }
+function match(p){
+  const q=document.getElementById('q').value.trim();
+  if(q && !p.kw.includes(q)) return false;
+  for(const f of activeFilters) if(!p.f.includes(f)) return false;
+  return true;
+}
+function tagHtml(p){ return p.tags.map(([t,c])=>`<span class="${c}">${t}</span>`).join(''); }
+function renderBook(){
+  const ppl = list().filter(match);
+  // 最近つながった人（先頭の recent 該当者）
+  const recent = ppl.find(p=>p.recent) || (state.kenta && match(kenta) ? kenta : null) || null;
+  const rc = document.getElementById('recentCard');
+  const rs = document.getElementById('recentSec');
+  if(recent){
+    rs.classList.remove('hidden');
+    rc.innerHTML = `
+      <div class="bigcard">
+        <div class="top"><div class="avatar lg">${recent.name[0]}</div>
+          <div><div class="name">${recent.name}</div><div class="meta">${recent.dept}</div>
+          <div class="context">${recent.ctx}</div></div></div>
+        <div class="tags">${tagHtml(recent)}</div>
+        <button class="btn primary" onclick="openDetail('${recent.id}')">プロフィールを見る　＞</button>
+        ${recent.id==='misaki' ? `<div class="memo"><span>💬 話したこと：<b id="memoView">${state.memo||'（未記入）'}</b></span><span class="edit" onclick="openMemo()">✎ メモを編集</span></div>`:''}
+      </div>`;
+  } else { rs.classList.add('hidden'); }
+  // グリッド
+  const grid = document.getElementById('peopleGrid');
+  const rest = ppl.filter(p=>p!==recent);
+  grid.innerHTML = rest.map(p=>`
+    <div class="card" onclick="openDetail('${p.id}')">
+      <span class="bm">🔖</span>
+      <div class="avatar sm">${p.name[0]}</div>
+      <div class="nm">${p.name}</div><div class="mt">${p.dept}</div>
+      ${p.tags.slice(0,1).map(([t,c])=>`<span class="${c}">${t}</span>`).join('')}
+    </div>`).join('') || `<div class="empty" style="grid-column:1/3">該当する人がいません</div>`;
+  // 次に会えそう：ミサキが絞り込みで消えていたら隠す
+  document.getElementById('meetSec').classList.toggle('hidden', !ppl.some(p=>p.id==='misaki') || state.plans.length>0);
+}
+
+// ---------- 詳細 ----------
+function openDetail(id){
+  const p = list().find(x=>x.id===id);
+  const tt = p.pub
+    ? `<div class="kv"><b>時間割</b><span>公開中 ｜ ${p.common}</span></div>`
+    : `<div class="kv"><b>時間割</b><span>非公開（共通の授業・空きコマは表示されません）</span></div>`;
+  document.getElementById('detailBody').innerHTML = `
+    <div class="grab"></div>
+    <div class="top" style="display:flex;gap:14px;align-items:center">
+      <div class="avatar lg">${p.name[0]}</div>
+      <div><div class="name" style="font-size:19px;font-weight:bold">${p.name}</div>
+      <div class="meta" style="color:var(--sub);font-size:12.5px">${p.dept} ｜ ${p.campus}キャンパス</div>
+      <div class="context">${p.ctx}</div></div></div>
+    <div class="tags">${tagHtml(p)}</div>
+    <div style="margin-top:12px">
+      <div class="kv"><b>共通点</b><span>${p.common}</span></div>${tt}
+      ${p.id==='misaki' ? `<div class="kv"><b>メモ</b><span>${state.memo||'（未記入）'}（自分にだけ表示）</span></div>`:''}
+    </div>
+    ${p.id==='misaki' && state.plans.length===0 ? `<button class="btn coral" onclick="closeSheet('ovDetail');openInvite()">一緒にどこか行ってみる？</button>`:''}
+    <button class="btn ghost" onclick="closeSheet('ovDetail')">閉じる</button>`;
+  document.getElementById('ovDetail').classList.add('open');
+}
+
+// ---------- メモ ----------
+function openMemo(){ document.getElementById('memoInput').value = state.memo; document.getElementById('ovMemo').classList.add('open'); }
+function saveMemo(){ state.memo = document.getElementById('memoInput').value.trim(); save(); closeSheet('ovMemo'); renderBook(); toast('メモを保存しました（自分にだけ表示されます）'); }
+
+// ---------- 誘い → 予定成立 ----------
+function openInvite(){ document.getElementById('ovInvite').classList.add('open'); }
+function sendInvite(){
+  closeSheet('ovInvite');
+  toast('ミサキさんに誘いを送りました');
+  setTimeout(()=>{
+    state.plans.push({when:'水曜 12:20', what:'心理学概論のあと 学食ランチ', with:'ミサキさんと'});
+    state.notice = true; save();
+    document.getElementById('bellDot').classList.add('on');
+    toast('🎉 ミサキさんが承認しました！「予定」に追加されました');
+    renderBook(); renderPlans();
+  }, 1800);
+}
+function renderPlans(){
+  const el = document.getElementById('planList');
+  el.innerHTML = state.plans.length
+    ? state.plans.map(p=>`<div class="plan"><div class="when">📅 ${p.when}</div><div class="what">${p.what}</div><div class="with">👥 ${p.with}</div></div>`).join('')
+    : `<div class="empty">まだ予定はありません。<br>つながり帳の「次に会えそう」から誘ってみましょう。</div>`;
+}
+function openNotice(){
+  if(state.notice){ go('plan'); document.getElementById('bellDot').classList.remove('on'); state.notice=false; save(); }
+  else toast('新しい通知はありません');
+}
+
+// ---------- URL交換 ----------
+function openConnect(){ document.getElementById('ovConnect').classList.add('open'); }
+function copyUrl(){
+  const i=document.getElementById('myUrl'); i.select();
+  try{ navigator.clipboard ? navigator.clipboard.writeText(i.value) : document.execCommand('copy'); }catch(e){}
+  toast('URLをコピーしました。DiscordやLINEで送ってみましょう');
+}
+function demoConnect(){
+  closeSheet('ovConnect');
+  if(state.kenta){ toast('ケンタさんとはすでにつながっています'); return; }
+  state.kenta = true; save(); renderBook();
+  toast('🔗 ケンタさんとつながりました：Horizon新歓・Web制作が共通です');
+}
+
+// ---------- ホーム／プロフィール ----------
+function toggleEvent(){
+  state.joined = !state.joined; save();
+  const ev=document.getElementById('ev1');
+  ev.classList.toggle('joined', state.joined); ev.classList.toggle('gray', false);
+  ev.querySelector('.join').textContent = state.joined ? '参加予定 ✓' : '参加する';
+  toast(state.joined ? '合同開発会に参加表明しました（色が付きます）' : '参加を取り消しました');
+}
+function togglePub(){
+  state.pub = !state.pub; save();
+  document.getElementById('pubSw').classList.toggle('on', state.pub);
+  people.find(p=>p.id==='misaki'); // 自分の公開設定はデモでは相手表示に影響しない
+  toast(state.pub ? '時間割を公開しました' : '時間割を非公開にしました');
+}
+
+// ---------- 初期化 ----------
+(function init(){
+  const ev=document.getElementById('ev1');
+  if(state.joined){ ev.classList.add('joined'); ev.querySelector('.join').textContent='参加予定 ✓'; }
+  else ev.classList.add('gray');
+  if(!state.pub) document.getElementById('pubSw').classList.remove('on');
+  if(state.notice) document.getElementById('bellDot').classList.add('on');
+  renderBook(); renderPlans();
+})();
+</script>
+</body>
+</html>
