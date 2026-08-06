@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>つながり帳</title>
+<style>
+  :root{
+    --navy:#1e3a6e; --navy-2:#2c4d8d; --navy-d:#152a52; --ink:#1f2937;
+    --mint:#22b795; --mint-d:#0e8a6f; --mint-bg:#e2f6f0; --mint-line:#bfe8dd;
+    --coral:#ff5f52; --coral-2:#ff7d55; --coral-bg:#ffece8;
+    --violet-bg:#efe9fb; --violet:#6d4fc4;
+    --amber-bg:#fdf1dd; --amber:#b07714;
+    --blue-bg:#e3edfb; --blue:#2c5eb3;
+    --bg:#f3f5fa; --card:#ffffff; --line:#e6eaf2; --sub:#8a93a6;
+    --sh-sm:0 1px 2px rgba(21,42,82,.05),0 2px 8px rgba(21,42,82,.05);
+    --sh-md:0 2px 6px rgba(21,42,82,.06),0 10px 28px rgba(21,42,82,.10);
+    --sh-fab:0 10px 26px rgba(21,42,82,.38),0 2px 6px rgba(21,42,82,.25);
+    --r-lg:22px; --r-md:18px; --r-sm:13px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",Meiryo,sans-serif;
+       background:#d8dee9;color:var(--ink);font-size:14px;line-height:1.6;
+       font-feature-settings:"palt"}
+  #app{max-width:430px;margin:0 auto;background:var(--bg);min-height:100dvh;
+       display:flex;flex-direction:column;position:relative;overflow:hidden;
+       box-shadow:0 0 60px rgba(21,42,82,.18)}
+  #app::before{content:"";position:absolute;top:0;left:0;right:0;height:190px;
+       background:linear-gradient(160deg,#e7eefb 0%,#eef4f6 55%,var(--bg) 100%);pointer-events:none}
+  main{flex:1;overflow-y:auto;padding-bottom:82px;position:relative;z-index:1}
+  .screen{display:none;padding:20px 18px 28px}
+  .screen.active{display:block;animation:fadeUp .28s ease both}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+  /* ---------- app bar ---------- */
+  .appbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+  .appbar h1{font-size:23px;color:var(--navy);letter-spacing:.01em;font-weight:800;display:flex;align-items:baseline;gap:6px}
+  .appbar h1 .q{color:var(--mint);font-size:19px;transform:translateY(-4px)}
+  .appbar .tagline{color:var(--sub);font-size:12px;margin-top:3px;letter-spacing:.04em}
+  .bell{width:42px;height:42px;border-radius:14px;background:var(--card);border:1px solid var(--line);
+        display:flex;align-items:center;justify-content:center;font-size:17px;position:relative;cursor:pointer;
+        box-shadow:var(--sh-sm);transition:transform .12s}
+  .bell:active{transform:scale(.92)}
+  .bell .dot{position:absolute;top:9px;right:10px;width:9px;height:9px;border-radius:50%;
+             background:var(--coral);border:2px solid #fff;display:none}
+  .bell .dot.on{display:block;animation:pulse 1.6s ease infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,95,82,.45)}55%{box-shadow:0 0 0 6px rgba(255,95,82,0)}}
+
+  /* ---------- search & chips ---------- */
+  .search{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);
+          border-radius:16px;padding:12px 15px;margin:14px 0 11px;color:var(--sub);box-shadow:var(--sh-sm)}
+  .search input{border:none;outline:none;flex:1;font-size:14px;background:transparent;color:var(--ink)}
+  .search input::placeholder{color:#aeb6c6}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:999px;
+        padding:7px 14px;font-size:12.5px;font-weight:600;color:#4b5568;cursor:pointer;user-select:none;
+        box-shadow:var(--sh-sm);transition:transform .12s,background .15s,color .15s}
+  .chip:active{transform:scale(.94)}
+  .chip.on{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 4px 12px rgba(30,58,110,.28)}
+  .chip.horizon.on{background:linear-gradient(135deg,var(--coral-2),var(--coral));border-color:transparent;
+        box-shadow:0 4px 12px rgba(255,95,82,.32)}
+
+  /* ---------- sections ---------- */
+  .sec{margin-top:22px}
+  .sec h2{font-size:16px;color:var(--navy);font-weight:800;display:flex;align-items:baseline;justify-content:space-between;letter-spacing:.01em}
+  .sec h2 .q{color:var(--mint);font-size:13px;margin-left:2px}
+  .sec h2 .more{font-size:12px;color:var(--sub);font-weight:600;cursor:pointer}
+
+  /* ---------- cards ---------- */
+  .bigcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;margin-top:12px;
+           box-shadow:var(--sh-md);position:relative;overflow:hidden}
+  .bigcard::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;
+           background:linear-gradient(90deg,var(--mint),#7fd9c4 55%,transparent)}
+  .bigcard .top{display:flex;gap:15px;align-items:center}
+  .avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;
+          font-weight:800;flex:0 0 auto;letter-spacing:.02em}
+  .avatar.lg{width:74px;height:74px;font-size:27px;box-shadow:inset 0 0 0 3px #fff,0 0 0 3px var(--mint)}
+  .avatar.sm{width:46px;height:46px;font-size:18px;box-shadow:inset 0 0 0 2px #fff,0 0 0 1.5px var(--line)}
+  .av-mint{background:linear-gradient(140deg,#d8f4ec,#a9e7d7);color:var(--mint-d)}
+  .av-blue{background:linear-gradient(140deg,#dcE9fb,#b3ccf0);color:var(--blue)}
+  .av-coral{background:linear-gradient(140deg,#ffe6e1,#ffc4ba);color:#c8483b}
+  .av-violet{background:linear-gradient(140deg,#ebe4fa,#cfc0f0);color:var(--violet)}
+  .av-amber{background:linear-gradient(140deg,#fdeed7,#f5d9a8);color:var(--amber)}
+  .av-teal{background:linear-gradient(140deg,#d9f2f4,#aadfe4);color:#0f7c86}
+  .bigcard .name{font-size:20px;font-weight:800;letter-spacing:.01em}
+  .bigcard .meta{color:var(--sub);font-size:12.5px;margin-top:1px}
+  .context{display:inline-flex;align-items:center;gap:5px;color:#c8483b;font-size:12px;margin-top:6px;font-weight:700;
+           background:var(--coral-bg);border-radius:999px;padding:3px 10px}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .tag{font-size:11.5px;font-weight:600;border-radius:999px;padding:5px 11px;background:var(--mint-bg);color:var(--mint-d)}
+  .tag.coral{background:var(--coral-bg);color:#c8483b}
+  .tag.navy{background:var(--blue-bg);color:var(--blue)}
+  .btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;text-align:center;border:none;
+       border-radius:999px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;margin-top:14px;
+       font-family:inherit;transition:transform .12s,box-shadow .15s,filter .15s}
+  .btn:active{transform:scale(.97)}
+  .btn.primary{background:linear-gradient(135deg,var(--navy-2),var(--navy));color:#fff;box-shadow:0 6px 16px rgba(30,58,110,.3)}
+  .btn.coral{background:linear-gradient(135deg,var(--coral-2),var(--coral));color:#fff;box-shadow:0 6px 16px rgba(255,95,82,.35)}
+  .btn.ghost{background:transparent;color:var(--sub);border:1.5px solid var(--line);font-weight:600;box-shadow:none}
+  .memo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;
+        padding:10px 12px;border-radius:var(--r-sm);background:#f7f9fc;border:1px dashed #d8dfeb;
+        font-size:12.5px;color:#5a6478}
+  .memo .edit{color:var(--navy-2);cursor:pointer;flex:0 0 auto;font-weight:700}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 13px;cursor:pointer;
+        position:relative;box-shadow:var(--sh-sm);transition:transform .13s,box-shadow .15s}
+  .card:active{transform:scale(.96)}
+  .card .bm{position:absolute;top:12px;right:12px;font-size:13px;opacity:.75}
+  .card .nm{font-weight:800;margin-top:9px;font-size:14.5px}
+  .card .mt{color:var(--sub);font-size:11.5px;margin-top:1px}
+  .card .tag{display:inline-block;margin-top:9px}
+
+  /* ---------- meet ---------- */
+  .meet{background:linear-gradient(150deg,#e7f8f2,#dcf3ec 70%);border:1px solid var(--mint-line);
+        border-radius:var(--r-lg);padding:16px;margin-top:12px;box-shadow:var(--sh-sm);position:relative;overflow:hidden}
+  .meet::after{content:"”";position:absolute;right:14px;top:2px;font-size:44px;color:rgba(34,183,149,.18);font-weight:800}
+  .meet .lead{font-weight:800;color:#0d6350;font-size:15px;display:flex;align-items:center;gap:7px}
+  .meet .flow{display:flex;align-items:stretch;gap:9px;margin-top:12px;font-size:12.5px}
+  .slot{background:#fff;border-radius:var(--r-sm);padding:8px 13px;border:1px solid var(--mint-line);box-shadow:var(--sh-sm)}
+  .slot b{display:block;font-size:10.5px;color:var(--sub);font-weight:600;letter-spacing:.06em}
+  .slot .cn{font-weight:700;color:var(--ink)}
+  .arrow{color:#0d6350;align-self:center;font-weight:800}
+  .why{font-size:11.5px;color:#3f7d6e;margin-top:10px;display:flex;gap:6px;align-items:flex-start}
+
+  /* ---------- fab ---------- */
+  .fab{position:absolute;right:18px;bottom:100px;width:66px;height:66px;border-radius:24px;
+       background:linear-gradient(150deg,var(--navy-2),var(--navy-d));color:#fff;border:none;
+       font-size:10.5px;font-weight:800;cursor:pointer;box-shadow:var(--sh-fab);
+       display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:5;
+       transition:transform .13s;font-family:inherit}
+  .fab:active{transform:scale(.9)}
+  .fab span{font-size:21px}
+
+  /* ---------- nav ---------- */
+  nav{position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);
+      -webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;z-index:6;padding:6px 8px 10px}
+  nav button{flex:1;background:none;border:none;padding:6px 0;font-size:10.5px;color:#9aa3b5;cursor:pointer;
+             font-family:inherit;font-weight:600;border-radius:14px;transition:color .15s}
+  nav button .ic{display:block;font-size:20px;margin-bottom:2px;filter:grayscale(1) opacity(.55);transition:filter .15s,transform .15s}
+  nav button.on{color:var(--navy)}
+  nav button.on .ic{filter:none;transform:translateY(-1px)}
+  nav button.on::after{content:"";display:block;width:18px;height:3px;border-radius:99px;background:var(--mint);margin:3px auto 0}
+  nav button::after{content:"";display:block;width:18px;height:3px;border-radius:99px;background:transparent;margin:3px auto 0}
+
+  /* ---------- timetable ---------- */
+  .ttwrap{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:10px;margin-top:12px;box-shadow:var(--sh-sm)}
+  table.tt{width:100%;border-collapse:separate;border-spacing:3px;font-size:10.5px;table-layout:fixed}
+  .tt th{color:var(--sub);font-size:10.5px;font-weight:700;padding:4px 0;letter-spacing:.05em}
+  .tt th.pd{width:20px}
+  .tt td{background:#f4f6fa;border-radius:9px;text-align:center;height:46px;padding:3px 2px;color:#b7bfcd}
+  .tt td.cls{background:var(--blue-bg);color:var(--blue);font-weight:700}
+  .tt td.common{background:linear-gradient(140deg,#dff5ee,#cdeee2);color:var(--mint-d);font-weight:800;
+                box-shadow:inset 0 0 0 1.5px var(--mint-line)}
+  .legend{display:flex;gap:14px;margin-top:9px;font-size:11px;color:var(--sub);padding:0 4px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3.5px;margin-right:5px;vertical-align:-1px}
+  .legend .l1 i{background:var(--blue-bg);box-shadow:inset 0 0 0 1px #c3d4ee}
+  .legend .l2 i{background:#cdeee2;box-shadow:inset 0 0 0 1px var(--mint-line)}
+
+  .event{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:14px;margin-top:12px;
+         display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:var(--sh-sm);transition:background .25s}
+  .event .ttl{font-weight:800;font-size:14.5px}
+  .event .sub2{color:var(--sub);font-size:11.5px;margin-top:2px}
+  .event.gray{background:#eef0f5;border-style:dashed;color:#7d8698}
+  .event.gray .ttl{color:#7d8698}
+  .event .join{border:none;border-radius:999px;padding:9px 15px;font-size:12px;font-weight:700;cursor:pointer;
+               background:var(--navy);color:#fff;flex:0 0 auto;font-family:inherit;transition:transform .12s}
+  .event .join:active{transform:scale(.93)}
+  .event.joined{background:linear-gradient(150deg,#e7f8f2,#dcf3ec);border-color:var(--mint-line)}
+  .event.joined .ttl{color:#0d6350}
+  .event.joined .sub2{color:#3f7d6e}
+  .event.joined .join{background:var(--mint)}
+
+  /* ---------- plans ---------- */
+  .plan{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;margin-top:12px;
+        box-shadow:var(--sh-md);position:relative;overflow:hidden;animation:fadeUp .3s ease both}
+  .plan::before{content:"";position:absolute;top:0;bottom:0;left:0;width:5px;background:linear-gradient(var(--coral-2),var(--coral))}
+  .plan .when{color:var(--coral);font-weight:800;font-size:12.5px;letter-spacing:.03em}
+  .plan .what{font-weight:800;font-size:16px;margin-top:3px}
+  .plan .with{color:var(--sub);font-size:12.5px;margin-top:3px}
+  .plan .ok{position:absolute;right:14px;top:14px;background:var(--mint-bg);color:var(--mint-d);
+            font-size:11px;font-weight:800;border-radius:999px;padding:4px 10px}
+  .empty{color:var(--sub);text-align:center;padding:44px 12px;font-size:13px;line-height:2}
+  .empty .big{font-size:34px;display:block;margin-bottom:6px;filter:grayscale(.3)}
+
+  /* ---------- profile ---------- */
+  .toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--card);
+          border:1px solid var(--line);border-radius:var(--r-md);padding:15px;margin-top:12px;box-shadow:var(--sh-sm)}
+  .toggle b{font-size:14px}
+  .note{font-size:11.5px;color:var(--sub);margin-top:10px;line-height:1.7}
+  .toggle .note{margin-top:3px}
+  .switch{width:48px;height:28px;border-radius:999px;background:#ccd4e2;position:relative;cursor:pointer;transition:.2s;flex:0 0 auto}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;
+                 transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .switch.on{background:var(--mint)}
+  .switch.on::after{left:23px}
+
+  /* ---------- sheets ---------- */
+  .overlay{position:absolute;inset:0;background:rgba(15,23,42,.5);display:none;z-index:10;align-items:flex-end;
+           backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+  .overlay.open{display:flex;animation:dim .2s ease both}
+  @keyframes dim{from{opacity:0}to{opacity:1}}
+  .sheet{background:var(--card);width:100%;border-radius:26px 26px 0 0;padding:14px 20px 30px;max-height:88%;
+         overflow-y:auto;animation:rise .3s cubic-bezier(.2,.9,.3,1) both;box-shadow:0 -12px 40px rgba(15,23,42,.25)}
+  @keyframes rise{from{transform:translateY(48px);opacity:.4}to{transform:none;opacity:1}}
+  .sheet .grab{width:44px;height:5px;border-radius:99px;background:#dbe1ec;margin:0 auto 16px}
+  .sheet h3{color:var(--navy);font-size:18px;font-weight:800;margin-bottom:4px}
+  .sheet .sub{color:var(--sub);font-size:12.5px;line-height:1.7}
+  .sheet textarea{width:100%;border:1.5px solid var(--line);border-radius:14px;padding:13px;font-size:14px;
+                  margin-top:14px;min-height:100px;font-family:inherit;resize:vertical;background:#f8fafd;
+                  color:var(--ink);line-height:1.7;outline:none;transition:border-color .15s}
+  .sheet textarea:focus{border-color:var(--navy-2)}
+  .kv{display:flex;gap:10px;margin-top:9px;font-size:13px;line-height:1.65}
+  .kv b{color:var(--navy);flex:0 0 78px;font-weight:700;font-size:12px;background:#eef2f9;border-radius:8px;
+        text-align:center;align-self:flex-start;padding:3px 0}
+  .urlbox{display:flex;gap:8px;margin-top:14px}
+  .urlbox input{flex:1;border:1.5px solid var(--line);border-radius:13px;padding:12px;font-size:12.5px;
+                background:#f8fafd;color:#4b5568;font-family:ui-monospace,Menlo,monospace;outline:none;min-width:0}
+  .urlbox button{border:none;border-radius:13px;background:var(--navy);color:#fff;padding:0 17px;font-weight:700;
+                 cursor:pointer;font-family:inherit;transition:transform .12s}
+  .urlbox button:active{transform:scale(.94)}
+
+  /* ---------- toast & confetti ---------- */
+  #toast{position:absolute;left:50%;bottom:126px;transform:translateX(-50%) translateY(12px);
+         background:rgba(21,42,82,.95);color:#fff;padding:12px 19px;border-radius:16px;font-size:13px;font-weight:600;
+         opacity:0;pointer-events:none;transition:.28s cubic-bezier(.2,.9,.3,1);z-index:20;max-width:88%;
+         box-shadow:0 10px 30px rgba(15,23,42,.35);line-height:1.5}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .confetti{position:absolute;top:-12px;width:9px;height:14px;border-radius:2.5px;z-index:30;pointer-events:none;
+            animation:drop 1.5s ease-in forwards}
+  @keyframes drop{
+    0%{transform:translateY(0) rotate(0);opacity:1}
+    100%{transform:translateY(105vh) rotate(560deg);opacity:.7}}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+<main>
+
+  <!-- ================= つながり帳 ================= -->
+  <section class="screen active" id="scr-book">
+    <div class="appbar">
+      <div>
+        <h1>つながり帳<span class="q">”</span></h1>
+        <div class="tagline">出会った人を、次のつながりへ</div>
+      </div>
+      <div class="bell" onclick="openNotice()">🔔<span class="dot" id="bellDot"></span></div>
+    </div>
+
+    <div class="search">🔍<input id="q" placeholder="名前・授業・イベントで検索" oninput="renderBook()"></div>
+
+    <div class="chips" id="chips">
+      <div class="chip" data-f="recent" onclick="toggleChip(this)">🕒 最近会った</div>
+      <div class="chip" data-f="class" onclick="toggleChip(this)">📖 同じ授業</div>
+      <div class="chip" data-f="circle" onclick="toggleChip(this)">👥 サークル</div>
+      <div class="chip horizon" data-f="horizon" onclick="toggleChip(this)">🚩 Horizon</div>
+    </div>
+
+    <div class="sec" id="recentSec">
+      <h2>最近つながった人<span class="q">”</span></h2>
+      <div id="recentCard"></div>
+    </div>
+
+    <div class="sec">
+      <h2>みんなのプロフィール <span class="more">すべて見る ›</span></h2>
+      <div class="grid" id="peopleGrid"></div>
+    </div>
+
+    <div class="sec" id="meetSec">
+      <h2>次に会えそう<span class="q">”</span></h2>
+      <div class="meet" id="meetCard">
+        <div class="lead">📅 水曜3限、ミサキさんも空きコマ</div>
+        <div class="flow">
+          <div class="slot"><b>2限</b><span class="cn">心理学概論</span></div><div class="arrow">›</div>
+          <div class="slot"><b>3限</b><span class="cn">空きコマ</span></div>
+        </div>
+        <div class="why">💡<span>根拠：同じ授業のあと、お互いの公開時間割で空きコマが重なっています</span></div>
+        <button class="btn coral" onclick="openInvite()">一緒にどこか行ってみる？</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ホーム（時間割） ================= -->
+  <section class="screen" id="scr-home">
+    <div class="appbar"><div><h1>ホーム</h1><div class="tagline">今週の時間割とHorizonの予定</div></div></div>
+    <div class="ttwrap">
+      <table class="tt">
+        <tr><th class="pd"></th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th></tr>
+        <tr><th class="pd">1</th><td class="cls">英語</td><td></td><td></td><td></td><td></td></tr>
+        <tr><th class="pd">2</th><td></td><td></td><td class="common">心理学概論</td><td class="cls">経営学</td><td></td></tr>
+        <tr><th class="pd">3</th><td></td><td class="cls">統計学</td><td class="common">空きコマ</td><td></td><td></td></tr>
+        <tr><th class="pd">4</th><td></td><td></td><td></td><td></td><td class="cls">情報リテラシー</td></tr>
+        <tr><th class="pd">5</th><td></td><td></td><td></td><td></td><td></td></tr>
+      </table>
+      <div class="legend"><span class="l1"><i></i>自分の授業</span><span class="l2"><i></i>ミサキさんとの共通</span></div>
+    </div>
+    <div class="sec"><h2>Horizonの予定</h2>
+      <div class="event" id="ev1"><div><div class="ttl">合同開発会</div><div class="sub2">土曜 13:00〜 ｜ 瀬田・深草 合同</div></div>
+        <button class="join" onclick="toggleEvent()">参加する</button></div>
+    </div>
+  </section>
+
+  <!-- ================= 予定 ================= -->
+  <section class="screen" id="scr-plan">
+    <div class="appbar"><div><h1>予定</h1><div class="tagline">一緒にする予定</div></div></div>
+    <div id="planList"></div>
+  </section>
+
+  <!-- ================= プロフィール ================= -->
+  <section class="screen" id="scr-me">
+    <div class="appbar"><div><h1>プロフィール</h1></div></div>
+    <div class="bigcard">
+      <div class="top"><div class="avatar lg av-blue">ハ</div>
+        <div><div class="name">ハルト</div><div class="meta">経営学部 1年 ｜ 瀬田キャンパス</div>
+        <div><span class="context">🚩 Horizon 新入部員</span></div></div></div>
+      <div class="tags"><span class="tag navy">📖 心理学概論ほか5コマ</span><span class="tag">💻 Web制作を勉強中</span><span class="tag coral">🎸 軽音に興味</span></div>
+    </div>
+    <div class="toggle"><div><b>時間割を公開する</b><div class="note">つながった部員に共通授業・空きコマが表示されます</div></div>
+      <div class="switch on" id="pubSw" onclick="togglePub()"></div></div>
+    <div class="toggle"><div><b>ブロック・通報</b><div class="note">困ったときはこちら（本実装で対応）</div></div><div style="color:var(--sub)">›</div></div>
+  </section>
+
+</main>
+
+<button class="fab" onclick="openConnect()"><span>🔗</span>つながる</button>
+
+<nav>
+  <button data-s="home" onclick="go('home')"><span class="ic">🏠</span>ホーム</button>
+  <button data-s="book" class="on" onclick="go('book')"><span class="ic">📒</span>つながり帳</button>
+  <button data-s="plan" onclick="go('plan')"><span class="ic">📅</span>予定</button>
+  <button data-s="me" onclick="go('me')"><span class="ic">👤</span>プロフィール</button>
+</nav>
+
+<!-- ==== 詳細シート ==== -->
+<div class="overlay" id="ovDetail" onclick="closeIfBg(event,'ovDetail')">
+  <div class="sheet" id="detailBody"></div>
+</div>
+
+<!-- ==== 誘いシート ==== -->
+<div class="overlay" id="ovInvite" onclick="closeIfBg(event,'ovInvite')">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>ミサキさんを誘う</h3>
+    <div class="sub">根拠：水曜2限 心理学概論（共通）→ 3限 お互い空きコマ</div>
+    <textarea id="inviteMsg">この前のHorizon新歓で話したハルトです！水曜の心理学概論のあと、3限空いてたら一緒に学食行かない？</textarea>
+    <div class="note">文面は編集できます。送信前に必ず自分で確認します（自動送信はしません）。</div>
+    <button class="btn coral" onclick="sendInvite()">この内容で誘いを送る</button>
+    <button class="btn ghost" onclick="closeSheet('ovInvite')">あとで考える</button>
+  </div>
+</div>
+
+<!-- ==== つながる（URL交換）シート ==== -->
+<div class="overlay" id="ovConnect" onclick="closeIfBg(event,'ovConnect')">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>つながる</h3>
+    <div class="sub">この交換用URLを相手に送ると、お互いの「出会いカード」が自動で作られます。</div>
+    <div class="urlbox"><input id="myUrl" readonly value="https://tsunagari-cho.app/c/haruto-0806"><button onclick="copyUrl()">コピー</button></div>
+    <div class="note">いま何で出会ったか（例：Horizon新歓）は、開いた場所と日時から自動でタグ付けされます。QRコード表示は今後追加予定。</div>
+    <button class="btn primary" onclick="demoConnect()">（デモ）相手がURLを開いた体験を見る</button>
+    <button class="btn ghost" onclick="closeSheet('ovConnect')">閉じる</button>
+  </div>
+</div>
+
+<!-- ==== メモ編集シート ==== -->
+<div class="overlay" id="ovMemo" onclick="closeIfBg(event,'ovMemo')">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h3>話したことメモ</h3>
+    <div class="sub">自分だけに表示されます。相手には見えません。</div>
+    <textarea id="memoInput"></textarea>
+    <button class="btn primary" onclick="saveMemo()">保存する</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+</div>
+
+<script>
+// ---------- デモ用固定データ ----------
+const state = JSON.parse(localStorage.getItem('tsunagari') || 'null') || {
+  memo: '軽音と大学生活', plans: [], joined: false, pub: true, kenta: false, notice: false
+};
+function save(){ localStorage.setItem('tsunagari', JSON.stringify(state)); }
+
+const people = [
+  {id:'misaki', name:'ミサキ', dept:'文学部 1年', ctx:'Horizon新歓で出会いました', recent:true, av:'av-mint',
+   tags:[['📖 心理学概論','tag'],['🎸 軽音に興味','tag coral']], f:['recent','class','horizon'],
+   campus:'瀬田', pub:true,
+   common:'共通の授業：心理学概論（水2）／ 共通の空きコマ：水3', kw:'ミサキ 文学部 心理学概論 軽音 Horizon 新歓'},
+  {id:'taichi', name:'タイチ', dept:'経済学部 1年', ctx:'統計学の授業で出会いました', av:'av-blue',
+   tags:[['📖 統計学で一緒','tag']], f:['class'], campus:'瀬田', pub:false,
+   common:'共通の授業：統計学（火3）', kw:'タイチ 経済学部 統計学'},
+  {id:'ayaka', name:'アヤカ', dept:'法学部 1年', ctx:'Horizon新歓で出会いました', av:'av-coral',
+   tags:[['🏓 卓球サークル','tag coral']], f:['circle','horizon'], campus:'深草', pub:false,
+   common:'共通の所属：Horizon', kw:'アヤカ 法学部 卓球 サークル Horizon'},
+  {id:'souta', name:'ソウタ', dept:'理学部 1年', ctx:'新入生交流会で出会いました', av:'av-violet',
+   tags:[['🎪 新入生交流会','tag navy']], f:['recent'], campus:'瀬田', pub:false,
+   common:'共通のイベント：新入生交流会', kw:'ソウタ 理学部 新入生交流会 イベント'},
+  {id:'riko', name:'リコ', dept:'文学部 1年', ctx:'英語の授業で出会いました', av:'av-amber',
+   tags:[['📖 英語の授業','tag']], f:['class'], campus:'深草', pub:false,
+   common:'共通の授業：英語コミュニケーション（月1）', kw:'リコ 文学部 英語 授業'},
+];
+const kenta = {id:'kenta', name:'ケンタ', dept:'情報学部 2年', ctx:'Horizon新歓で出会いました', recent:false, av:'av-teal',
+   tags:[['💻 プログラミング','tag'],['🚩 Horizon','tag coral']], f:['recent','horizon'], campus:'深草', pub:false,
+   common:'共通の所属：Horizon ／ 共通の興味：Web制作', kw:'ケンタ 情報学部 プログラミング Horizon 新歓'};
+
+// ---------- 画面遷移 ----------
+function go(s){
+  document.querySelectorAll('.screen').forEach(e=>e.classList.remove('active'));
+  document.getElementById('scr-'+s).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.s===s));
+  if(s==='plan') renderPlans();
+}
+function closeSheet(id){ document.getElementById(id).classList.remove('open'); }
+function closeIfBg(ev,id){ if(ev.target.id===id) closeSheet(id); }
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'), 2800);
+}
+function burst(){
+  const colors=['#22b795','#ff5f52','#2c4d8d','#f2b53c','#6d4fc4'];
+  for(let i=0;i<26;i++){
+    const c=document.createElement('div'); c.className='confetti';
+    c.style.left=(4+Math.random()*92)+'%';
+    c.style.background=colors[i%colors.length];
+    c.style.animationDelay=(Math.random()*0.35)+'s';
+    c.style.transform='rotate('+(Math.random()*180)+'deg)';
+    document.getElementById('app').appendChild(c);
+    setTimeout(()=>c.remove(), 2200);
+  }
+}
+
+// ---------- つながり帳描画 ----------
+const activeFilters = new Set();
+function toggleChip(el){
+  el.classList.toggle('on');
+  el.classList.contains('on') ? activeFilters.add(el.dataset.f) : activeFilters.delete(el.dataset.f);
+  renderBook();
+}
+function list(){ return state.kenta ? [kenta, ...people] : [...people]; }
+function match(p){
+  const q=document.getElementById('q').value.trim();
+  if(q && !p.kw.includes(q)) return false;
+  for(const f of activeFilters) if(!p.f.includes(f)) return false;
+  return true;
+}
+function tagHtml(p){ return p.tags.map(([t,c])=>`<span class="${c}">${t}</span>`).join(''); }
+function renderBook(){
+  const ppl = list().filter(match);
+  const recent = ppl.find(p=>p.recent) || (state.kenta && match(kenta) ? kenta : null) || null;
+  const rc = document.getElementById('recentCard');
+  const rs = document.getElementById('recentSec');
+  if(recent){
+    rs.classList.remove('hidden');
+    rc.innerHTML = `
+      <div class="bigcard">
+        <div class="top"><div class="avatar lg ${recent.av}">${recent.name[0]}</div>
+          <div><div class="name">${recent.name}</div><div class="meta">${recent.dept}</div>
+          <div><span class="context">🤝 ${recent.ctx}</span></div></div></div>
+        <div class="tags">${tagHtml(recent)}</div>
+        <button class="btn primary" onclick="openDetail('${recent.id}')">プロフィールを見る　›</button>
+        ${recent.id==='misaki' ? `<div class="memo"><span>💬 話したこと：<b id="memoView">${state.memo||'（未記入）'}</b></span><span class="edit" onclick="openMemo()">✎ メモを編集</span></div>`:''}
+      </div>`;
+  } else { rs.classList.add('hidden'); }
+  const grid = document.getElementById('peopleGrid');
+  const rest = ppl.filter(p=>p!==recent);
+  grid.innerHTML = rest.map(p=>`
+    <div class="card" onclick="openDetail('${p.id}')">
+      <span class="bm">🔖</span>
+      <div class="avatar sm ${p.av}">${p.name[0]}</div>
+      <div class="nm">${p.name}</div><div class="mt">${p.dept}</div>
+      ${p.tags.slice(0,1).map(([t,c])=>`<span class="${c}">${t}</span>`).join('')}
+    </div>`).join('') || `<div class="empty" style="grid-column:1/3"><span class="big">🔍</span>該当する人がいません</div>`;
+  document.getElementById('meetSec').classList.toggle('hidden', !ppl.some(p=>p.id==='misaki') || state.plans.length>0);
+}
+
+// ---------- 詳細 ----------
+function openDetail(id){
+  const p = list().find(x=>x.id===id);
+  const tt = p.pub
+    ? `<div class="kv"><b>時間割</b><span>公開中 ｜ ${p.common}</span></div>`
+    : `<div class="kv"><b>時間割</b><span>非公開（共通の授業・空きコマは表示されません）</span></div>`;
+  document.getElementById('detailBody').innerHTML = `
+    <div class="grab"></div>
+    <div class="top" style="display:flex;gap:15px;align-items:center">
+      <div class="avatar lg ${p.av}">${p.name[0]}</div>
+      <div><div style="font-size:20px;font-weight:800">${p.name}</div>
+      <div style="color:var(--sub);font-size:12.5px">${p.dept} ｜ ${p.campus}キャンパス</div>
+      <div><span class="context">🤝 ${p.ctx}</span></div></div></div>
+    <div class="tags">${tagHtml(p)}</div>
+    <div style="margin-top:14px">
+      <div class="kv"><b>共通点</b><span>${p.common}</span></div>${tt}
+      ${p.id==='misaki' ? `<div class="kv"><b>メモ</b><span>${state.memo||'（未記入）'}<span style="color:var(--sub)">（自分にだけ表示）</span></span></div>`:''}
+    </div>
+    ${p.id==='misaki' && state.plans.length===0 ? `<button class="btn coral" onclick="closeSheet('ovDetail');openInvite()">一緒にどこか行ってみる？</button>`:''}
+    <button class="btn ghost" onclick="closeSheet('ovDetail')">閉じる</button>`;
+  document.getElementById('ovDetail').classList.add('open');
+}
+
+// ---------- メモ ----------
+function openMemo(){ document.getElementById('memoInput').value = state.memo; document.getElementById('ovMemo').classList.add('open'); }
+function saveMemo(){ state.memo = document.getElementById('memoInput').value.trim(); save(); closeSheet('ovMemo'); renderBook(); toast('メモを保存しました（自分にだけ表示されます）'); }
+
+// ---------- 誘い → 予定成立 ----------
+function openInvite(){ document.getElementById('ovInvite').classList.add('open'); }
+function sendInvite(){
+  closeSheet('ovInvite');
+  toast('ミサキさんに誘いを送りました');
+  setTimeout(()=>{
+    state.plans.push({when:'水曜 12:20', what:'心理学概論のあと 学食ランチ', with:'ミサキさんと'});
+    state.notice = true; save();
+    document.getElementById('bellDot').classList.add('on');
+    toast('🎉 ミサキさんが承認しました！「予定」に追加されました');
+    burst();
+    renderBook(); renderPlans();
+  }, 1800);
+}
+function renderPlans(){
+  const el = document.getElementById('planList');
+  el.innerHTML = state.plans.length
+    ? state.plans.map(p=>`<div class="plan"><span class="ok">✓ 成立</span><div class="when">📅 ${p.when}</div><div class="what">${p.what}</div><div class="with">👥 ${p.with}</div></div>`).join('')
+    : `<div class="empty"><span class="big">🗓</span>まだ予定はありません。<br>つながり帳の「次に会えそう」から誘ってみましょう。</div>`;
+}
+function openNotice(){
+  if(state.notice){ go('plan'); document.getElementById('bellDot').classList.remove('on'); state.notice=false; save(); }
+  else toast('新しい通知はありません');
+}
+
+// ---------- URL交換 ----------
+function openConnect(){ document.getElementById('ovConnect').classList.add('open'); }
+function copyUrl(){
+  const i=document.getElementById('myUrl'); i.select();
+  try{ navigator.clipboard ? navigator.clipboard.writeText(i.value) : document.execCommand('copy'); }catch(e){}
+  toast('URLをコピーしました。DiscordやLINEで送ってみましょう');
+}
+function demoConnect(){
+  closeSheet('ovConnect');
+  if(state.kenta){ toast('ケンタさんとはすでにつながっています'); return; }
+  state.kenta = true; save(); renderBook();
+  toast('🔗 ケンタさんとつながりました：Horizon新歓・Web制作が共通です');
+}
+
+// ---------- ホーム／プロフィール ----------
+function toggleEvent(){
+  state.joined = !state.joined; save();
+  const ev=document.getElementById('ev1');
+  ev.classList.toggle('joined', state.joined); ev.classList.toggle('gray', !state.joined);
+  ev.querySelector('.join').textContent = state.joined ? '参加予定 ✓' : '参加する';
+  toast(state.joined ? '合同開発会に参加表明しました（色が付きます）' : '参加を取り消しました');
+}
+function togglePub(){
+  state.pub = !state.pub; save();
+  document.getElementById('pubSw').classList.toggle('on', state.pub);
+  toast(state.pub ? '時間割を公開しました' : '時間割を非公開にしました');
+}
+
+// ---------- 初期化 ----------
+(function init(){
+  const ev=document.getElementById('ev1');
+  if(state.joined){ ev.classList.add('joined'); ev.querySelector('.join').textContent='参加予定 ✓'; }
+  else ev.classList.add('gray');
+  if(!state.pub) document.getElementById('pubSw').classList.remove('on');
+  if(state.notice) document.getElementById('bellDot').classList.add('on');
+  renderBook(); renderPlans();
+})();
+</script>
+</body>
+</html>
